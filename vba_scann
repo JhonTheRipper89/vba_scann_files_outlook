@@ -1,4 +1,3 @@
-
 Private WithEvents oItems As Outlook.Items
 
 ' Configuración de inicio de la aplicación y opciones de almacenamiento
@@ -28,7 +27,6 @@ Private Sub Application_Startup()
     Dim ejecution As String
     Dim valCapetaRaiz As Boolean
     
-    
     ejecution = "0"
     valCarpetaRaiz = False
     Dim sUserChoice As String
@@ -44,18 +42,12 @@ Private Sub Application_Startup()
             borradorOpciones.Subject = "IMPORTANTE CONFIG DB"
             sUserChoice = InputBox("Escaner PDF JSON" & vbCrLf & " " & vbCrLf & "Ingrese la opción de guardado:" & vbCrLf & "1 - Guardar por remitente" & vbCrLf & "2 - Guardar por tipo de archivo")
             If sUserChoice = "" Then
-                Debug.Print "Entro un valor null"
                 borradorOpciones.Body = 0
                 borradorOpciones.Save
             Else
-                
                 borradorOpciones.Body = sUserChoice
                 borradorOpciones.Save
-                
             End If
-
-            Debug.Print "Se guardo :" & borradorOpciones.Body
-            
             
         Else
             sUserChoice = borradorOpciones.Body
@@ -65,14 +57,10 @@ Private Sub Application_Startup()
         Set borradorEjecucion = cuenta.Session.GetDefaultFolder(olFolderDrafts).Items.Find("[Subject] = 'IMPORTANTE EJECUCION DB'")
         
         If borradorEjecucion Is Nothing Then
-            Debug.Print "Entro al If"
             Set borradorEjecucion = Application.CreateItem(olMailItem)
-            Debug.Print "Pasa del SET"
             borradorEjecucion.Subject = "IMPORTANTE EJECUCION DB"
-            Debug.Print "Pasa de la creacion"
-            borradorEjecucion.Body = ejecution ' Corregir la variable ejecution
+            borradorEjecucion.Body = ejecution
             borradorEjecucion.Save
-            Debug.Print "Se guardó :" & borradorEjecucion.Body
         End If
 
         ' Borrador para la última fecha de ejecución
@@ -89,15 +77,11 @@ Private Sub Application_Startup()
             fechaUltimaEjecucion = CDate(borradorFecha.Body)
         End If
         
-        Debug.Print "Ya tiene data :" & sUserChoice & vbCrLf & borradorOpciones.Body
-        
         ' Dependiendo de la opción seleccionada, ejecutar el procesamiento adecuado
         If sUserChoice = 1 Then
-            Debug.Print "Entro en el if corespondiente :" & sUserChoice
             Set oItems = Outlook.GetNamespace("MAPI").GetDefaultFolder(olFolderInbox).Items
             ProcesarCorreosPorRemitente cuenta, sistema, nombreCarpetaAdjuntos, rutaCarpetaRaiz, fechaUltimaEjecucion, borradorFecha, borradorEjecucion
         ElseIf sUserChoice = 2 Then
-            Debug.Print "Entro en la opcion 2"
             ProcesarCorreosPorTipo cuenta, sistema, nombreCarpetaAdjuntos, rutaCarpetaRaiz, fechaUltimaEjecucion, borradorFecha, borradorEjecucion
         Else
             MsgBox "ESCANER PDF JSON " & vbCrLf & " " & vbCrLf & "Opción no válida o carpeta de destino no encontrada. Por favor, reinicie Outlook y seleccione una opción. De lo contrario, no se podrán realizar búsquedas para su almacenamiento posterior."
@@ -107,12 +91,10 @@ Private Sub Application_Startup()
         End If
     Next
 
-    Debug.Print VBA.Now & " Trigger iniciado"
     Exit Sub
 
 ErrorHandler:
     MsgBox "ESCANER PDF JSON " & vbCrLf & " " & vbCrLf & "Se le informa que no se llevarán a cabo acciones de escaneo y guardado. Una vez que esté listo, por favor reinicie la aplicación y seleccione una opción."
-    Debug.Print "Ocurrió un error: " & Err.Description, vbExclamation, "Error"
     borradorOpciones.Delete
     borradorFecha.Delete
     borradorEjecucion.Delete
@@ -124,18 +106,13 @@ Private Sub ProcesarCorreosPorRemitente(cuenta As Outlook.Account, sistema As Ob
     Dim archivoAdjunto As Attachment
     Dim listaCorreos As Collection
     Set listaCorreos = New Collection
-    
 
-    ' Cargar correos en la colección temporal
-    Debug.Print "Ultima fecha guardada :" & fechaUltimaEjecucion
-    
     ' Valida su primera ejecución
     If borradorEjecucion.Body = 0 Then
     
         For Each correo In cuenta.Session.GetDefaultFolder(olFolderInbox).Items
             If TypeName(correo) = "MailItem" Then
                 listaCorreos.Add correo
-                Debug.Print "Toma todos los corres de dias anteriores a la fecha actual"
             End If
         Next correo
         borradorEjecucion.Body = 1
@@ -143,20 +120,13 @@ Private Sub ProcesarCorreosPorRemitente(cuenta As Outlook.Account, sistema As Ob
     Else
         For Each correo In cuenta.Session.GetDefaultFolder(olFolderInbox).Items
             If TypeName(correo) = "MailItem" And correo.ReceivedTime > fechaUltimaEjecucion Then
-                
                 listaCorreos.Add correo
-                Debug.Print "Toma un rango a partir de ultima fecha de guardado"
             End If
         Next correo
     End If
-    
-    
 
     ' Procesar cada correo en la colección temporal
     For Each correo In listaCorreos
-        ' Debug.Print "Procesando correo: " & correo.Subject
-
-        ' Verificar si el correo tiene archivos adjuntos PDF o JSON
         Dim tienePDF As Boolean, tieneJSON As Boolean
         tienePDF = False
         tieneJSON = False
@@ -167,7 +137,6 @@ Private Sub ProcesarCorreosPorRemitente(cuenta As Outlook.Account, sistema As Ob
             ElseIf archivoAdjunto.FileName Like "*.json" Then
                 tieneJSON = True
             End If
-            ' Debug.Print "Hay PDF: " & tienePDF & ", JSON: " & tieneJSON
             If tienePDF And tieneJSON Then Exit For
         Next archivoAdjunto
 
@@ -178,14 +147,12 @@ Private Sub ProcesarCorreosPorRemitente(cuenta As Outlook.Account, sistema As Ob
     Next correo
 
     ' Actualizar la última fecha de ejecución en el borrador de fecha
-    
     borradorFecha.Body = CStr(Now)
     borradorFecha.Save
 End Sub
 
 ' Sub para guardar archivos adjuntos por remitente
 Private Sub GuardarAdjuntosPorRemitente(sistema As Object, correo As Outlook.MailItem, nombreCarpetaAdjuntos As String, rutaCarpetaRaiz As String)
-    Debug.Print "Guardando adjuntos para el remitente: " & correo.SenderEmailAddress
     Dim rutaCarpetaDominio As String
     rutaCarpetaDominio = rutaCarpetaRaiz & "\" & nombreCarpetaAdjuntos & "\" & correo.SenderEmailAddress
 
@@ -212,89 +179,66 @@ Private Sub GuardarAdjuntosPorRemitente(sistema As Object, correo As Outlook.Mai
     Next archivoAdjunto
 End Sub
 
-
 ' Sub para procesar correos por tipo de archivo
 Private Sub ProcesarCorreosPorTipo(cuenta As Outlook.Account, sistema As Object, nombreCarpetaAdjuntos As String, rutaCarpetaRaiz As String, fechaUltimaEjecucion As Date, borradorFecha As Outlook.MailItem, borradorEjecucion As Outlook.MailItem)
-
     Dim correo As Object
     Dim archivoAdjunto As Attachment
     Dim dataCorreosTemp As Collection
 
     Set dataCorreosTemp = New Collection
-    
-    ' Cargar correos en la colección temporal
-    Debug.Print "Última fecha guardada :" & fechaUltimaEjecucion
-    
-    ' Solo añadir si es posterior a la última fecha de ejecución
+
+    ' Validar primera ejecución
     If borradorEjecucion.Body = 0 Then
+    
         For Each correo In cuenta.Session.GetDefaultFolder(olFolderInbox).Items
-            ' Asegúrate de que el item sea de tipo MailItem
             If TypeName(correo) = "MailItem" Then
-                Debug.Print "Entro al if de borrador ejecution"
-                If correo.ReceivedTime Then
-                    dataCorreosTemp.Add correo
-                    Debug.Print "Correo agregado: " & correo.Subject
-                End If
+                dataCorreosTemp.Add correo
             End If
         Next correo
-        borradorEjecucion.Body = 1 ' Corregir la variable ejecution
+        borradorEjecucion.Body = 1
         borradorEjecucion.Save
-    End If
-    
-    
-    For Each correo In cuenta.Session.GetDefaultFolder(olFolderInbox).Items
-        ' Asegurarse de que el item sea de tipo MailItem
-        If TypeName(correo) = "MailItem" Then
-            ' Solo añadir si es posterior a la última fecha de ejecución
-            If correo.ReceivedTime > fechaUltimaEjecucion Then
+    Else
+        For Each correo In cuenta.Session.GetDefaultFolder(olFolderInbox).Items
+            If TypeName(correo) = "MailItem" And correo.ReceivedTime > fechaUltimaEjecucion Then
                 dataCorreosTemp.Add correo
-                Debug.Print "Correo agregado: " & correo.Subject
             End If
-        End If
-    Next correo
-            
-        
+        Next correo
+    End If
+
     ' Procesar cada correo en la colección temporal
-    Dim tienePDF As Boolean, tieneJSON As Boolean
     For Each correo In dataCorreosTemp
+        Dim tienePDF As Boolean, tieneJSON As Boolean
         tienePDF = False
         tieneJSON = False
-        
-        ' Verificar si el correo tiene archivos adjuntos PDF o JSON
+
         For Each archivoAdjunto In correo.attachments
             If archivoAdjunto.FileName Like "*.pdf" Then
-                
                 tienePDF = True
             ElseIf archivoAdjunto.FileName Like "*.json" Then
-                
                 tieneJSON = True
             End If
             If tienePDF And tieneJSON Then Exit For
         Next archivoAdjunto
 
-        ' Crear carpetas solo si hay archivos PDF o JSON
+        ' Guardar adjuntos solo si hay archivos PDF o JSON
         If tienePDF Or tieneJSON Then
-            GuardarAdjuntosPorFormato sistema, correo, nombreCarpetaAdjuntos, rutaCarpetaRaiz
+            GuardarAdjuntosPorTipo sistema, correo, nombreCarpetaAdjuntos, rutaCarpetaRaiz
         End If
     Next correo
+
+    ' Actualizar la última fecha de ejecución en el borrador de fecha
     borradorFecha.Body = CStr(Now)
     borradorFecha.Save
 End Sub
 
-
-' Sub para guardar archivos adjuntos en subcarpetas según el tipo de archivo (sin incluir el remitente)
-Private Sub GuardarAdjuntosPorFormato(sistema As Object, correo As Outlook.MailItem, nombreCarpetaAdjuntos As String, rutaCarpetaRaiz As String)
-    Debug.Print "Guardando adjuntos en subcarpetas por formato"
-
-    ' Ruta base para la carpeta de adjuntos
+' Sub para guardar archivos adjuntos por tipo de archivo
+Private Sub GuardarAdjuntosPorTipo(sistema As Object, correo As Outlook.MailItem, nombreCarpetaAdjuntos As String, rutaCarpetaRaiz As String)
     Dim rutaCarpetaPDF As String
     Dim rutaCarpetaJSON As String
-    
-    
     rutaCarpetaPDF = rutaCarpetaRaiz & "\" & nombreCarpetaAdjuntos & "\pdf"
     rutaCarpetaJSON = rutaCarpetaRaiz & "\" & nombreCarpetaAdjuntos & "\json"
 
-    ' Crear subcarpetas PDF y JSON si no existen
+    ' Crear las carpetas PDF y JSON si no existen
     If Not sistema.FolderExists(rutaCarpetaPDF) Then
         sistema.CreateFolder rutaCarpetaPDF
     End If
@@ -303,17 +247,11 @@ Private Sub GuardarAdjuntosPorFormato(sistema As Object, correo As Outlook.MailI
     End If
 
     ' Guardar archivos adjuntos en las carpetas correspondientes
-    Dim archivoAdjunto As Attachment
     For Each archivoAdjunto In correo.attachments
         If archivoAdjunto.FileName Like "*.pdf" Then
-            
             archivoAdjunto.SaveAsFile rutaCarpetaPDF & "\" & archivoAdjunto.FileName
         ElseIf archivoAdjunto.FileName Like "*.json" Then
-            
             archivoAdjunto.SaveAsFile rutaCarpetaJSON & "\" & archivoAdjunto.FileName
         End If
     Next archivoAdjunto
-    
 End Sub
-
-
